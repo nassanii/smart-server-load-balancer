@@ -12,16 +12,17 @@ output_path = os.path.join(base_dir, '..', '..', 'data', 'processed', 'labeled_l
 df_cleaned = pd.read_csv(cleaned_path)
 df_original = pd.read_csv(original_path) # نحتاجه فقط لعمود Priority
 
-# 2. تجهيز المصفوفة y (الهدف)
-# تحويل عمود Priority إلى تنسيق [Server A, Server B]
-priority = df_original['Priority (0/1)'].values
-y_true = np.zeros((len(priority), 2))
-
+# 2. تجهيز المصفوفة y (الهدف) بناءً على حالة السيرفرات الفعلية
 label_a = []
 label_b = []
 
-for p in priority:
-    if p == 1:
+# سنعطي وزناً 70% للـ CPU و 30% للاتصالات لحساب الحمل الإجمالي
+for index, row in df_cleaned.iterrows():
+    score_a = (row['CPU Load A'] * 0.7) + (row['Conn A'] * 0.3)
+    score_b = (row['CPU Load B'] * 0.7) + (row['Conn B'] * 0.3)
+    
+    # توجيه الطلب للسيرفر الأقل حملاً
+    if score_a <= score_b:
         label_a.append(1)
         label_b.append(0)
     else:

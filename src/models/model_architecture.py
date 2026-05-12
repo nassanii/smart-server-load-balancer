@@ -10,12 +10,23 @@ df = pd.read_csv(data_path)
 raw_data = df.iloc[:, :8].values
 y = df[['Label_A', 'Label_B']].values
 
-# --- 1. Data Standardization (Z-Score) ---
-# This method is better than dividing by the maximum because it centers the data around zero
-mean_vals = raw_data.mean(axis=0)
-std_vals = raw_data.std(axis=0)
+# --- 1. Train/Test Split (70/30) & Standardization ---
+np.random.seed(42) # for reproducibility in splitting
+indices = np.random.permutation(raw_data.shape[0])
+train_size = int(0.7 * raw_data.shape[0])
+train_idx, test_idx = indices[:train_size], indices[train_size:]
+
+X_train_raw, X_test_raw = raw_data[train_idx], raw_data[test_idx]
+y_train, y_test = y[train_idx], y[test_idx]
+
+# Calculate mean and std ONLY on training data to prevent data leakage
+mean_vals = X_train_raw.mean(axis=0)
+std_vals = X_train_raw.std(axis=0)
 std_vals[std_vals == 0] = 1 # To prevent division by zero
-x = (raw_data - mean_vals) / std_vals
+
+# Scale train and test data
+X_train = (X_train_raw - mean_vals) / std_vals
+X_test = (X_test_raw - mean_vals) / std_vals
 
 
 # build the structure of the neural network
@@ -32,7 +43,7 @@ def softmax(z):
 # Define the architecture
 np.random.seed(42)  # for reproducibility
 input_size = 8
-hidden_layer_size = 64  # Increase capacity to understand complex data
+hidden_layer_size = 16  # Increase capacity to understand complex data
 output_size = 2
 
 
@@ -47,21 +58,21 @@ b2 = np.zeros((1, output_size))
 
 # --- 3. Training Settings ---
 learning_rate = 0.1 # Very ideal rate with Z-Score
-epochs = 65000
+epochs = 200
 
 print("Training started...")
 
-m = x.shape[0] # Number of rows (1254)
+m = X_train.shape[0] # Number of training rows
 
 for epoch in range(epochs):
     # 1. Forward pass
-    z1 = np.dot(x, w1) + b1
+    z1 = np.dot(X_train, w1) + b1
     a1 = relu(z1)
     z2 = np.dot(a1, w2) + b2
     prediction = softmax(z2)
 
     # 2. Backward pass
-    error = prediction - y 
+    error = prediction - y_train 
 
     # 3. Calculate Gradients 
     dw2 = np.dot(a1.T, error) / m
@@ -70,7 +81,7 @@ for epoch in range(epochs):
     error_hidden = np.dot(error, w2.T) 
     error_hidden[z1 <= 0] = 0  
     
-    dw1 = np.dot(x.T, error_hidden) / m
+    dw1 = np.dot(X_train.T, error_hidden) / m
     db1 = np.sum(error_hidden, axis=0, keepdims=True) / m
 
     # 4. Weight Update
@@ -80,7 +91,7 @@ for epoch in range(epochs):
     b1 -= learning_rate * db1
     
     # 5. Loss Calculation
-    loss = -np.mean(np.sum(y * np.log(prediction + 1e-10), axis=1))    
+    loss = -np.mean(np.sum(y_train * np.log(prediction + 1e-10), axis=1))    
 
     # --- Learning Rate Decay ---
     # Reduce learning rate by 10% every 2000 epochs for a soft and stable descent
@@ -88,7 +99,7 @@ for epoch in range(epochs):
         learning_rate *= 0.9
         print(f"--> Learning Rate reduced to: {learning_rate:.6f}")
 
-    if epoch % 100 == 0:
+    if epoch % 10 == 0:
         print(f"Epoch {epoch:4} | Loss: {loss:.6f}")
 
 def forward_pass(x_input):
@@ -98,17 +109,21 @@ def forward_pass(x_input):
     return softmax(z2)
 
 # --- Model Accuracy Calculation ---
-# 1. Pass the data one last time to get the final predictions
-final_predictions = forward_pass(x)
+def calculate_accuracy(x_data, y_true_data):
+    predictions = forward_pass(x_data)
+    predicted_classes = np.argmax(predictions, axis=1)
+    true_classes = np.argmax(y_true_data, axis=1)
+    return np.mean(predicted_classes == true_classes) * 100
 
-# 2. Determine the winning server (the one with the highest probability)
-predicted_servers = np.argmax(final_predictions, axis=1)
+train_accuracy = calculate_accuracy(X_train, y_train)
+test_accuracy = calculate_accuracy(X_test, y_test)
 
-# 3. Determine the correct server from the original data
-true_servers = np.argmax(y, axis=1)
+print(f"\n Training Complete!")
+print(f" Train Accuracy: {train_accuracy:.2f}% (How well it memorized the data)")
+print(f" Test Accuracy:  {test_accuracy:.2f}% (How well it generalizes to unseen data)")
 
-# 4. Calculate the match percentage
-accuracy = np.mean(predicted_servers == true_servers) * 100
+#save the model inside the processed folder
+np.savez(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'processed', 'trained_model.npz'),
+    w1=w1, b1=b1, w2=w2, b2=b2, mean_vals=mean_vals, std_vals=std_vals)
 
-print(f"\n✅ Training Complete!")
-print(f"📊 Final Model Accuracy: {accuracy:.2f}%")
+print("\n Model weights and biases saved!")

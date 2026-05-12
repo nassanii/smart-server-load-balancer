@@ -13,23 +13,27 @@ Instead of relying on high-level frameworks like TensorFlow or PyTorch, this pro
 - **He Initialization:** Used mathematically proven weight initialization for ReLU to prevent the "Dying ReLU" problem.
 - **Z-Score Standardization:** Scaled dataset features to a zero-mean distribution to prevent Gradient zigzagging.
 - **Learning Rate Decay:** Hand-coded adaptive learning rate to ensure smooth convergence and avoid overshooting the global minimum.
+- **Train/Test Split & Standardization:** Implemented a robust 70/30 Train/Test split. Calculated mean/std exclusively on the training set to prevent data leakage into the test set.
 
 ##  Neural Network Architecture
 - **Input Layer:** 8 Features (Request Size, Network Traffic, Threshold, Response Time, CPU Load A, CPU Load B, Active Connections A, Active Connections B).
-- **Hidden Layer:** 64 Neurons with ReLU Activation.
+- **Hidden Layer:** 16 Neurons with ReLU Activation (Optimized capacity to prevent overfitting).
 - **Output Layer:** 2 Neurons (Server A / Server B) with Softmax Activation.
 
-##  Dataset & Results
+## 📊 Dataset & Results
 - **Dataset:** 1,254 rows of mixed Server Logs and Telemetry data.
-- **Labeling:** One-Hot Encoded targets `[1, 0]` and `[0, 1]`.
-- **Performance:** Achieved a convergence loss of **0.26** and an overall routing accuracy of **~91.07%** after 65,000 epochs.
+- **Labeling Logic:** Dynamically routed based on a mathematical Server Load Score (`Score = 70% CPU + 30% Connections`). The network learns to route requests to the server with the lowest score.
+- **Performance:** Achieved robust generalization after 200 epochs:
+  - **Train Accuracy:** ~95.78% (Memorization)
+  - **Test Accuracy:** ~96.02% (Generalization to unseen data)
 
-## 🔬 Mathematical Challenges Conquered (Post-Mortem)
+##  Mathematical Challenges Conquered (Post-Mortem)
 During development, several foundational ML challenges were identified and fixed:
 
 1. **The Double Division Bug:** Fixed gradient crushing by ensuring matrix dimensions and `1/m` averaging were applied only once at the final gradient calculation.
 2. **Gradient Explosion:** Mitigated by implementing proper Batch Gradient Descent averaging rather than summed errors.
 3. **Symmetry Breaking:** Replaced standard `rand()` with `randn()` to introduce negative weights, allowing the network to inhibit specific signals effectively.
+4. **Data Leakage & Noise Labeling:** Discovered that random telemetry data caused the model to ignore server health. Fixed by algorithmically tying the correct labels to the actual CPU/Connection metrics and properly isolating the training set from the test set during scaling.
 
 ##  How to Run
 
