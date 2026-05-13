@@ -24,7 +24,7 @@ mean_vals = X_train_raw.mean(axis=0)
 std_vals = X_train_raw.std(axis=0)
 std_vals[std_vals == 0] = 1 # To prevent division by zero
 
-# Scale train and test data
+# z-score normalization
 X_train = (X_train_raw - mean_vals) / std_vals
 X_test = (X_test_raw - mean_vals) / std_vals
 
