@@ -17,9 +17,8 @@ ENV/
 
 # Data
 # Ignore all data files by default (to avoid committing large datasets)
-data/raw/
-data/processed/
-*.csv
+#data/raw/
+#data/processed/§
 *.xlsx
 *.pkl
 *.npy
