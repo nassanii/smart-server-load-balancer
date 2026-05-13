@@ -57,7 +57,7 @@ b2 = np.zeros((1, output_size))
 
 
 # --- 3. Training Settings ---
-learning_rate = 0.1 # Very ideal rate with Z-Score
+learning_rate = 0.1 
 epochs = 200
 
 print("Training started...")
@@ -93,11 +93,6 @@ for epoch in range(epochs):
     # 5. Loss Calculation
     loss = -np.mean(np.sum(y_train * np.log(prediction + 1e-10), axis=1))    
 
-    # --- Learning Rate Decay ---
-    # Reduce learning rate by 10% every 2000 epochs for a soft and stable descent
-    if epoch > 0 and epoch % 2000 == 0:
-        learning_rate *= 0.9
-        print(f"--> Learning Rate reduced to: {learning_rate:.6f}")
 
     if epoch % 10 == 0:
         print(f"Epoch {epoch:4} | Loss: {loss:.6f}")
